@@ -54,11 +54,12 @@ exports.updateBlog = asyncHandler(async (req, res) => {
 
     const [updatedCount] = await Blog.update(
         { title, content },
-        { where: { id: req.params.id, user_id: req.session.user_id } }
+        { where: { id: req.params.id } }
     );
 
+    // Edge case: blog deleted between middleware check and update
     if (!updatedCount) {
-        return fail(res, 404, 'Blog not found or not owned', 'NOT_FOUND');
+        return fail(res, 404, 'Blog not found', 'NOT_FOUND');
     }
 
     return success(res, { updated: true });
@@ -66,11 +67,12 @@ exports.updateBlog = asyncHandler(async (req, res) => {
 
 exports.deleteBlog = asyncHandler(async (req, res) => {
     const deletedCount = await Blog.destroy({
-        where: { id: req.params.id, user_id: req.session.user_id },
+        where: { id: req.params.id },
     });
 
+    // Edge case: blog deleted between middleware check and destroy
     if (!deletedCount) {
-        return fail(res, 404, 'Blog not found or not owned', 'NOT_FOUND');
+        return fail(res, 404, 'Blog not found', 'NOT_FOUND');
     }
 
     return success(res, { deleted: true });
