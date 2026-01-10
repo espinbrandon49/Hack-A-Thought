@@ -23,10 +23,17 @@ export default function Dashboard() {
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState(null);
 
+    const [success, setSuccess] = useState(null);
+
     const myBlogs = useMemo(() => {
         const uid = Number(user?.id);
         return blogs.filter((b) => Number(b?.user_id) === uid);
     }, [blogs, user]);
+
+    function flashSuccess(msg) {
+        setSuccess(msg);
+        setTimeout(() => setSuccess(null), 2500);
+    }
 
     async function load() {
         setLoading(true);
@@ -78,10 +85,11 @@ export default function Dashboard() {
 
             if (mode === "create") {
                 await create({ title: t, content: c });
+                flashSuccess("Post created.");
             } else {
                 await update(editingId, { title: t, content: c });
+                flashSuccess("Post updated.");
             }
-
             resetForm();
             await load();
         } catch (e2) {
@@ -100,6 +108,7 @@ export default function Dashboard() {
         try {
             setSubmitting(true);
             await remove(id);
+            flashSuccess("Post deleted.");
             await load();
         } catch (e2) {
             setSubmitError(e2);
@@ -222,6 +231,7 @@ export default function Dashboard() {
                     ))}
                 </ul>
             )}
+            {success ? <p style={{ color: "green" }}>{success}</p> : null}
         </div>
     );
 }

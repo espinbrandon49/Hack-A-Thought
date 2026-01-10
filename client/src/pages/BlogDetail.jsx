@@ -15,6 +15,7 @@ export default function BlogDetail() {
     const [commentText, setCommentText] = useState("");
     const [commentLoading, setCommentLoading] = useState(false);
     const [commentError, setCommentError] = useState(null);
+    const [success, setSuccess] = useState(null);
 
     async function load() {
         setLoading(true);
@@ -51,6 +52,7 @@ export default function BlogDetail() {
             setCommentLoading(true);
             await createComment({ comment: text, blog_id: Number(id) });
             setCommentText("");
+            flashSuccess("Comment added.");
             await load(); // simple + reliable refresh
         } catch (e2) {
             setCommentError(e2);
@@ -59,11 +61,17 @@ export default function BlogDetail() {
         }
     }
 
+    function flashSuccess(msg) {
+        setSuccess(msg);
+        setTimeout(() => setSuccess(null), 2500);
+    }
+
     async function handleDeleteComment(commentId) {
         setCommentError(null);
         try {
             setCommentLoading(true);
             await removeComment(commentId);
+            flashSuccess("Comment deleted.");
             await load();
         } catch (e2) {
             setCommentError(e2);
@@ -161,7 +169,6 @@ export default function BlogDetail() {
                                     {cCreated ? <span> • {cCreated}</span> : null}
                                 </div>
 
-                                {/* Optional delete (authed + owner) */}
                                 {isOwner ? (
                                     <div style={{ marginTop: 8 }}>
                                         <button
@@ -178,6 +185,7 @@ export default function BlogDetail() {
                     })}
                 </ul>
             )}
+            {success ? <p style={{ color: "green" }}>{success}</p> : null}
         </div>
     );
 }

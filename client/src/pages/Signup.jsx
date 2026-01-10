@@ -13,7 +13,13 @@ export default function Signup() {
 
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
 
+    function flashSuccess(msg) {
+        setSuccess(msg);
+        setTimeout(() => setSuccess(null), 2500);
+    }
+    
     async function handleSubmit(e) {
         e.preventDefault();
         setError(null);
@@ -26,6 +32,7 @@ export default function Signup() {
                 password,
             });
             await refreshMe();
+            flashSuccess("Account created.");
             navigate("/dashboard", { replace: true });
         } catch (err) {
             setError(err);
@@ -37,7 +44,7 @@ export default function Signup() {
     return (
         <div>
             <h2>Signup</h2>
-
+            {success ? <p style={{ color: "green" }}>{success}</p> : null}
             <form onSubmit={handleSubmit} style={{ maxWidth: 420 }}>
                 <div style={{ marginBottom: 10 }}>
                     <label>

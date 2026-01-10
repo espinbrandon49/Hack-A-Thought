@@ -13,6 +13,7 @@ export default function Login() {
 
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -22,6 +23,7 @@ export default function Login() {
             setSubmitting(true);
             await login({ username: username.trim(), password });
             await refreshMe(); // pulls /users/me and sets user
+            flashSuccess("Logged in.");
             const to = location.state?.from || "/dashboard";
             navigate(to, { replace: true });
         } catch (err) {
@@ -31,9 +33,15 @@ export default function Login() {
         }
     }
 
+    function flashSuccess(msg) {
+        setSuccess(msg);
+        setTimeout(() => setSuccess(null), 2500);
+    }
+    
     return (
         <div>
             <h2>Login</h2>
+            {success ? <p style={{ color: "green" }}>{success}</p> : null}
 
             <form onSubmit={handleSubmit} style={{ maxWidth: 420 }}>
                 <div style={{ marginBottom: 10 }}>

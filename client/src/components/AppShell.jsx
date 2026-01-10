@@ -1,10 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { logout } from "../api/auth";
 
 export default function AppShell({ children }) {
     const { user, bootLoading, bootError, refreshMe, setUser } = useAuth();
+    const [success, setSuccess] = useState(null);
+
+    function flashSuccess(msg) {
+        setSuccess(msg);
+        setTimeout(() => setSuccess(null), 2500);
+    }
 
     async function handleLogout() {
         try {
@@ -13,6 +19,7 @@ export default function AppShell({ children }) {
             // Even if logout fails, we still clear client auth state
         } finally {
             setUser(null);
+            flashSuccess("Logged out.");
         }
     }
 
@@ -68,6 +75,7 @@ export default function AppShell({ children }) {
             ) : null}
 
             <main>{children}</main>
+            
         </div>
     );
 }
