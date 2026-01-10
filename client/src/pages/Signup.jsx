@@ -1,7 +1,13 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { signup } from "../api/auth";
 import { useAuth } from "../auth/AuthProvider";
+
+import Card from "../components/ui/Card";
+import Input from "../components/ui/Input";
+import Button from "../components/ui/Button";
+import FormError from "../components/ui/FormError";
+import Spinner from "../components/ui/Spinner";
 
 export default function Signup() {
     const navigate = useNavigate();
@@ -11,100 +17,65 @@ export default function Signup() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
 
-    const [submitting, setSubmitting] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(null);
 
-    function flashSuccess(msg) {
-        setSuccess(msg);
-        setTimeout(() => setSuccess(null), 2500);
-    }
-    
     async function handleSubmit(e) {
         e.preventDefault();
         setError(null);
+        setLoading(true);
 
         try {
-            setSubmitting(true);
-            await signup({
-                name: name.trim(),
-                username: username.trim(),
-                password,
-            });
+            await signup({ name, username, password });
             await refreshMe();
-            flashSuccess("Account created.");
-            navigate("/dashboard", { replace: true });
+            navigate("/");
         } catch (err) {
             setError(err);
         } finally {
-            setSubmitting(false);
+            setLoading(false);
         }
     }
 
     return (
-        <div>
-            <h2>Signup</h2>
-            {success ? <p style={{ color: "green" }}>{success}</p> : null}
-            <form onSubmit={handleSubmit} style={{ maxWidth: 420 }}>
-                <div style={{ marginBottom: 10 }}>
-                    <label>
-                        Name
-                        <input
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            disabled={submitting}
-                            style={{ display: "block", width: "100%", padding: 8 }}
-                            autoComplete="name"
-                        />
-                    </label>
+        <Card className="mx-auto max-w-md p-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <h2 className="text-lg font-semibold text-slate-900">Sign up</h2>
+
+                <Input
+                    name="name"
+                    placeholder="Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                />
+
+                <Input
+                    name="username"
+                    placeholder="Username"
+                    autoComplete="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                />
+
+                <Input
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                />
+
+                <FormError error={error} />
+
+                <div className="flex items-center gap-3">
+                    <Button type="submit" disabled={loading}>
+                        {loading ? <Spinner label="Creating account…" /> : "Create account"}
+                    </Button>
                 </div>
-
-                <div style={{ marginBottom: 10 }}>
-                    <label>
-                        Username
-                        <input
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            disabled={submitting}
-                            style={{ display: "block", width: "100%", padding: 8 }}
-                            autoComplete="username"
-                        />
-                    </label>
-                </div>
-
-                <div style={{ marginBottom: 10 }}>
-                    <label>
-                        Password
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            disabled={submitting}
-                            style={{ display: "block", width: "100%", padding: 8 }}
-                            autoComplete="new-password"
-                        />
-                    </label>
-                </div>
-
-                <button
-                    type="submit"
-                    disabled={
-                        submitting || !name.trim() || !username.trim() || !password
-                    }
-                >
-                    {submitting ? "Creating…" : "Create account"}
-                </button>
-
-                {error ? (
-                    <p style={{ marginTop: 10 }}>
-                        {error.message || "Signup failed"}
-                    </p>
-                ) : null}
             </form>
-
-            <p style={{ marginTop: 12 }}>
-                Already have an account? <Link to="/login">Login</Link>
-            </p>
-        </div>
+        </Card>
     );
 }

@@ -2,96 +2,80 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getFeed } from "../api/blogs";
 
-function safeCommentCount(blog) {
-    const arr =
-        blog?.Comments ||
-        blog?.comments ||
-        blog?.Comment ||
-        blog?.comment ||
-        [];
-    return Array.isArray(arr) ? arr.length : 0;
-}
-
-function formatDate(value) {
-    if (!value) return "";
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
-}
+import Card from "../components/ui/Card";
+import Spinner from "../components/ui/Spinner";
+import FormError from "../components/ui/FormError";
+import EmptyState from "../components/ui/EmptyState";
 
 export default function Feed() {
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [blogs, setBlogs] = useState([]);
+  const [blogs, setBlogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    useEffect(() => {
-        let alive = true;
+  async function load() {
+    setError(null);
+    setLoading(true);
 
-        async function load() {
-            setLoading(true);
-            setError(null);
+    try {
+      const data = await getFeed(); // returns: { blogs: [...] }
+      setBlogs(Array.isArray(data?.blogs) ? data.blogs : []);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-            try {
-                const data = await getFeed(); // returns { blogs: [...] }
-                if (!alive) return;
-                setBlogs(Array.isArray(data?.blogs) ? data.blogs : []);
-            } catch (e) {
-                if (!alive) return;
-                setError(e);
-            } finally {
-                if (!alive) return;
-                setLoading(false);
-            }
-        }
+  useEffect(() => {
+    load();
+  }, []);
 
-        load();
-        return () => {
-            alive = false;
-        };
-    }, []);
-
-    // L
-    if (loading) return <p>Loading…</p>;
-
-    // E
-    if (error) return <p>{error.message || "Failed to load feed"}</p>;
-
-    // E (Empty)
-    if (!blogs.length) return <p>No posts yet.</p>;
-
-    // Success
+  if (loading) {
     return (
-        <div>
-            <h2>Feed</h2>
-
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                {blogs.map((b) => {
-                    const author = b?.User?.username || b?.User?.name || "Unknown";
-                    const created = formatDate(b?.createdAt);
-                    const commentCount = safeCommentCount(b);
-
-                    return (
-                        <li
-                            key={b.id}
-                            style={{
-                                padding: 12,
-                                border: "1px solid #ddd",
-                                borderRadius: 8,
-                                marginBottom: 12,
-                            }}
-                        >
-                            <h3 style={{ margin: "0 0 6px 0" }}>
-                                <Link to={`/blogs/${b.id}`}>{b.title || "(Untitled)"}</Link>
-                            </h3>
-
-                            <div style={{ opacity: 0.8, fontSize: 14 }}>
-                                <span>By {author}</span>
-                                {created ? <span> • {created}</span> : null}
-                                <span> • {commentCount} comments</span>
-                            </div>
-                        </li>
-                    );
-                })}
-            </ul>
-        </div>
+      <div className="py-6">
+        <Spinner label="Loading posts…" />
+      </div>
     );
+  }
+
+  if (error) {
+    return <FormError error={error} fallback="Failed to load posts." />;
+  }
+
+  if (!blogs.length) {
+    return (
+      <EmptyState title="No posts yet.">
+        Check back soon, or create the first post from Dashboard.
+      </EmptyState>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {blogs.map((b) => (
+        <Link key={b.id} to={`/blogs/${b.id}`} className="block">
+          <Card className="p-4 transition hover:bg-slate-50">
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-slate-900">
+                {b.title}
+              </h3>
+
+              <div className="text-sm text-slate-600">
+                {b.user?.username ? (
+                  <span>
+                    by{" "}
+                    <span className="font-medium text-slate-900">
+                      {b.user.username}
+                    </span>
+                  </span>
+                ) : (
+                  <span>by Unknown</span>
+                )}
+              </div>
+            </div>
+          </Card>
+        </Link>
+      ))}
+    </div>
+  );
 }

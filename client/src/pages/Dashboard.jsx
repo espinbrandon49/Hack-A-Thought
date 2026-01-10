@@ -1,50 +1,64 @@
-// client/src/pages/Dashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { create, getFeed, remove, update } from "../api/blogs";
 import { useAuth } from "../auth/AuthProvider";
-import { getFeed, create, update, remove } from "../api/blogs";
+
+import Card from "../components/ui/Card";
+import Input from "../components/ui/Input";
+import Textarea from "../components/ui/Textarea";
+import Button from "../components/ui/Button";
+import FormError from "../components/ui/FormError";
+import Spinner from "../components/ui/Spinner";
+import EmptyState from "../components/ui/EmptyState";
 
 export default function Dashboard() {
-    const navigate = useNavigate();
     const { user } = useAuth();
-
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
     const [blogs, setBlogs] = useState([]);
 
-    // create/edit form state
-    const [mode, setMode] = useState("create"); // "create" | "edit"
+    // editor state
     const [editingId, setEditingId] = useState(null);
-
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
 
-    const [submitting, setSubmitting] = useState(false);
-    const [submitError, setSubmitError] = useState(null);
-
+    // ui state
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
+    const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
     const myBlogs = useMemo(() => {
-        const uid = Number(user?.id);
-        return blogs.filter((b) => Number(b?.user_id) === uid);
-    }, [blogs, user]);
+        const uid = user?.id;
+        if (!uid) return [];
+        return (blogs || []).filter((b) => b.user_id === uid);
+    }, [blogs, user?.id]);
 
     function flashSuccess(msg) {
         setSuccess(msg);
         setTimeout(() => setSuccess(null), 2500);
     }
 
-    async function load() {
-        setLoading(true);
-        setError(null);
+    function resetEditor() {
+        setEditingId(null);
+        setTitle("");
+        setContent("");
+    }
 
+    function startEdit(blog) {
+        setEditingId(blog.id);
+        setTitle(blog.title || "");
+        setContent(blog.content || "");
+    }
+
+    async function load() {
+        setError(null);
+        setLoading(true);
         try {
-            const data = await getFeed(); // { blogs }
+            const data = await getFeed(); // returns: { blogs: [...] }
             setBlogs(Array.isArray(data?.blogs) ? data.blogs : []);
-        } catch (e) {
-            setError(e);
-            setBlogs([]);
+        } catch (err) {
+            setError(err);
         } finally {
             setLoading(false);
         }
@@ -55,183 +69,192 @@ export default function Dashboard() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    function resetForm() {
-        setMode("create");
-        setEditingId(null);
-        setTitle("");
-        setContent("");
-        setSubmitError(null);
-    }
-
-    function startEdit(blog) {
-        setMode("edit");
-        setEditingId(blog.id);
-        setTitle(blog.title || "");
-        setContent(blog.content || "");
-        setSubmitError(null);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-
     async function handleSubmit(e) {
         e.preventDefault();
-        setSubmitError(null);
-
-        const t = title.trim();
-        const c = content.trim();
-        if (!t || !c) return;
+        setError(null);
+        setSaving(true);
 
         try {
-            setSubmitting(true);
-
-            if (mode === "create") {
-                await create({ title: t, content: c });
-                flashSuccess("Post created.");
-            } else {
-                await update(editingId, { title: t, content: c });
+            if (editingId) {
+                await update(editingId, { title, content });
                 flashSuccess("Post updated.");
+            } else {
+                await create({ title, content });
+                flashSuccess("Post created.");
             }
-            resetForm();
+
+            resetEditor();
             await load();
-        } catch (e2) {
-            setSubmitError(e2);
+        } catch (err) {
+            setError(err);
         } finally {
-            setSubmitting(false);
+            setSaving(false);
         }
     }
 
     async function handleDelete(id) {
-        const ok = window.confirm("Delete this post?");
-        if (!ok) return;
-
-        setSubmitError(null);
+        setError(null);
+        setDeletingId(id);
 
         try {
-            setSubmitting(true);
             await remove(id);
             flashSuccess("Post deleted.");
             await load();
-        } catch (e2) {
-            setSubmitError(e2);
+        } catch (err) {
+            setError(err);
         } finally {
-            setSubmitting(false);
+            setDeletingId(null);
         }
     }
 
-    // L/E/E at page level
-    if (loading) return <p>Loading…</p>;
-    if (error) return <p>{error.message || "Failed to load dashboard"}</p>;
+    if (!user) {
+        return (
+            <EmptyState title="You must be logged in to access the dashboard.">
+                <Link to="/login" className="underline">
+                    Go to Login
+                </Link>
+            </EmptyState>
+        );
+    }
+
+    if (loading) {
+        return (
+            <div className="py-6">
+                <Spinner label="Loading dashboard…" />
+            </div>
+        );
+    }
 
     return (
-        <div>
-            <h2>Dashboard</h2>
+        <div className="space-y-6">
+            {success ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                    {success}
+                </div>
+            ) : null}
 
-            {/* Create/Edit */}
-            <div
-                style={{
-                    padding: 12,
-                    border: "1px solid #ddd",
-                    borderRadius: 8,
-                    marginBottom: 16,
-                }}
-            >
-                <h3 style={{ marginTop: 0 }}>
-                    {mode === "create" ? "Create Post" : "Edit Post"}
-                </h3>
+            {error ? <FormError error={error} /> : null}
 
-                <form onSubmit={handleSubmit}>
-                    <div style={{ marginBottom: 10 }}>
-                        <label>
-                            Title
-                            <input
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                disabled={submitting}
-                                style={{ display: "block", width: "100%", padding: 8 }}
-                            />
-                        </label>
-                    </div>
+            <Card className="p-6">
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <h2 className="text-lg font-semibold text-slate-900">
+                            {editingId ? "Edit post" : "Create a post"}
+                        </h2>
 
-                    <div style={{ marginBottom: 10 }}>
-                        <label>
-                            Content
-                            <textarea
-                                rows={6}
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                disabled={submitting}
-                                style={{ display: "block", width: "100%", padding: 8 }}
-                            />
-                        </label>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <button
-                            type="submit"
-                            disabled={submitting || !title.trim() || !content.trim()}
-                        >
-                            {submitting
-                                ? mode === "create"
-                                    ? "Creating…"
-                                    : "Saving…"
-                                : mode === "create"
-                                    ? "Create"
-                                    : "Save"}
-                        </button>
-
-                        {mode === "edit" ? (
-                            <button
+                        {editingId ? (
+                            <Button
                                 type="button"
-                                onClick={resetForm}
-                                disabled={submitting}
+                                variant="ghost"
+                                size="sm"
+                                onClick={resetEditor}
+                                disabled={saving}
                             >
                                 Cancel
-                            </button>
+                            </Button>
                         ) : null}
                     </div>
 
-                    {submitError ? (
-                        <p style={{ marginTop: 10 }}>
-                            {submitError.message || "Action failed"}
-                        </p>
-                    ) : null}
-                </form>
-            </div>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">
+                                Title
+                            </label>
+                            <Input
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder="Post title"
+                                required
+                            />
+                        </div>
 
-            {/* My Blogs list */}
-            <h3 style={{ marginTop: 0 }}>Your Posts</h3>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">
+                                Content
+                            </label>
+                            <Textarea
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                placeholder="Write your post…"
+                                rows={8}
+                                required
+                            />
+                        </div>
 
-            {myBlogs.length === 0 ? (
-                <p>You haven’t posted yet.</p>
-            ) : (
-                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                    {myBlogs.map((b) => (
-                        <li
-                            key={b.id}
-                            style={{
-                                padding: 12,
-                                border: "1px solid #ddd",
-                                borderRadius: 8,
-                                marginBottom: 12,
-                            }}
-                        >
-                            <h4 style={{ margin: "0 0 6px 0" }}>{b.title || "(Untitled)"}</h4>
+                        <div className="flex items-center gap-3">
+                            <Button type="submit" disabled={saving}>
+                                {saving ? (
+                                    <Spinner label={editingId ? "Saving…" : "Creating…"} />
+                                ) : editingId ? (
+                                    "Save changes"
+                                ) : (
+                                    "Create post"
+                                )}
+                            </Button>
 
-                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                <button type="button" onClick={() => navigate(`/blogs/${b.id}`)}>
-                                    View
-                                </button>
-                                <button type="button" onClick={() => startEdit(b)} disabled={submitting}>
-                                    Edit
-                                </button>
-                                <button type="button" onClick={() => handleDelete(b.id)} disabled={submitting}>
-                                    Delete
-                                </button>
+                            {editingId ? (
+                                <Link
+                                    to={`/blogs/${editingId}`}
+                                    className="text-sm text-slate-700 hover:text-slate-900 underline"
+                                >
+                                    View post
+                                </Link>
+                            ) : null}
+                        </div>
+                    </form>
+                </div>
+            </Card>
+
+            <div className="space-y-3">
+                <h3 className="text-base font-semibold text-slate-900">Your posts</h3>
+
+                {!myBlogs.length ? (
+                    <EmptyState title="No posts yet.">
+                        Create your first post using the editor above.
+                    </EmptyState>
+                ) : (
+                    myBlogs.map((b) => (
+                        <Card key={b.id} className="p-4">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <Link
+                                        to={`/blogs/${b.id}`}
+                                        className="block truncate text-sm font-semibold text-slate-900 hover:underline"
+                                    >
+                                        {b.title}
+                                    </Link>
+
+                                    <div className="mt-1 text-sm text-slate-600 line-clamp-2">
+                                        {b.content}
+                                    </div>
+                                </div>
+
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => startEdit(b)}
+                                        disabled={saving || deletingId === b.id}
+                                    >
+                                        Edit
+                                    </Button>
+
+                                    <Button
+                                        type="button"
+                                        variant="danger"
+                                        size="sm"
+                                        onClick={() => handleDelete(b.id)}
+                                        disabled={saving || deletingId === b.id}
+                                    >
+                                        {deletingId === b.id ? "Deleting…" : "Delete"}
+                                    </Button>
+                                </div>
                             </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
-            {success ? <p style={{ color: "green" }}>{success}</p> : null}
+                        </Card>
+                    ))
+                )}
+            </div>
         </div>
     );
 }

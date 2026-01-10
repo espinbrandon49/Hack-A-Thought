@@ -1,93 +1,72 @@
 import React, { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { login } from "../api/auth";
 import { useAuth } from "../auth/AuthProvider";
 
+import Card from "../components/ui/Card";
+import Input from "../components/ui/Input";
+import Button from "../components/ui/Button";
+import FormError from "../components/ui/FormError";
+import Spinner from "../components/ui/Spinner";
+
 export default function Login() {
     const navigate = useNavigate();
-    const location = useLocation();
     const { refreshMe } = useAuth();
 
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
 
-    const [submitting, setSubmitting] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(null);
 
     async function handleSubmit(e) {
         e.preventDefault();
         setError(null);
+        setLoading(true);
 
         try {
-            setSubmitting(true);
-            await login({ username: username.trim(), password });
-            await refreshMe(); // pulls /users/me and sets user
-            flashSuccess("Logged in.");
-            const to = location.state?.from || "/dashboard";
-            navigate(to, { replace: true });
+            await login({ username, password });
+            await refreshMe();
+            navigate("/");
         } catch (err) {
             setError(err);
         } finally {
-            setSubmitting(false);
+            setLoading(false);
         }
     }
 
-    function flashSuccess(msg) {
-        setSuccess(msg);
-        setTimeout(() => setSuccess(null), 2500);
-    }
-    
     return (
-        <div>
-            <h2>Login</h2>
-            {success ? <p style={{ color: "green" }}>{success}</p> : null}
+        <Card className="mx-auto max-w-md p-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <h2 className="text-lg font-semibold text-slate-900">Login</h2>
 
-            <form onSubmit={handleSubmit} style={{ maxWidth: 420 }}>
-                <div style={{ marginBottom: 10 }}>
-                    <label>
-                        Username
-                        <input
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            disabled={submitting}
-                            style={{ display: "block", width: "100%", padding: 8 }}
-                            autoComplete="username"
-                        />
-                    </label>
+                <Input
+                    name="username"
+                    placeholder="Username"
+                    autoComplete="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                />
+
+                <Input
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                />
+
+                <FormError error={error} />
+
+                <div className="flex items-center gap-3">
+                    <Button type="submit" disabled={loading}>
+                        {loading ? <Spinner label="Signing in…" /> : "Login"}
+                    </Button>
                 </div>
-
-                <div style={{ marginBottom: 10 }}>
-                    <label>
-                        Password
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            disabled={submitting}
-                            style={{ display: "block", width: "100%", padding: 8 }}
-                            autoComplete="current-password"
-                        />
-                    </label>
-                </div>
-
-                <button
-                    type="submit"
-                    disabled={submitting || !username.trim() || !password}
-                >
-                    {submitting ? "Logging in…" : "Login"}
-                </button>
-
-                {error ? (
-                    <p style={{ marginTop: 10 }}>
-                        {error.message || "Login failed"}
-                    </p>
-                ) : null}
             </form>
-
-            <p style={{ marginTop: 12 }}>
-                Need an account? <Link to="/signup">Sign up</Link>
-            </p>
-        </div>
+        </Card>
     );
 }
