@@ -7,7 +7,7 @@ import { api } from "./client";
  * returns: { user }
  */
 export function signup({ name, username, password }) {
-    return api.post("/auth", { name, username, password });
+    return api.post("/users", { name, username, password });
 }
 
 /**
@@ -17,7 +17,7 @@ export function signup({ name, username, password }) {
  * returns: { user }
  */
 export function login({ username, password }) {
-    return api.post("/auth/login", { username, password });
+    return api.post("/users/login", { username, password });
 }
 
 /**
@@ -26,7 +26,7 @@ export function login({ username, password }) {
  * returns: { logged_out: true }
  */
 export function logout() {
-    return api.post("/auth/logout", {});
+    return api.post("/users/logout", {});
 }
 
 /**
@@ -35,5 +35,5 @@ export function logout() {
  * returns: { user }
  */
 export function me() {
-    return api.get("/auth/me");
+    return api.get("/users/me");
 }

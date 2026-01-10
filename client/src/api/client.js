@@ -1,7 +1,9 @@
+// client/src/api/client.js
 // Single HTTP transport layer for the entire React app.
 // Rule: NO axios/fetch anywhere outside src/api/client.js.
 
 import axios from "axios";
+
 /**
  * App-level API error that screens can catch and render consistently.
  */
@@ -19,8 +21,23 @@ export class ApiError extends Error {
     }
 }
 
-function getBaseUrl() {
-    const raw = import.meta?.env?.VITE_API_BASE_URL;
+/**
+ * IMPORTANT:
+ * Do NOT read import.meta.env at module import-time for baseURL.
+ * We set baseURL lazily on first request to avoid dev/HMR timing weirdness.
+ */
+export const http = axios.create({
+    withCredentials: true, // cookie-session auth
+    headers: {
+        "Content-Type": "application/json",
+    },
+    timeout: 15000,
+});
+
+function ensureBaseUrl() {
+    if (http.defaults.baseURL) return;
+
+    const raw = import.meta.env.VITE_API_BASE_URL; // no optional chaining
 
     if (!raw) {
         throw new Error(
@@ -28,18 +45,8 @@ function getBaseUrl() {
         );
     }
 
-    return String(raw).replace(/\/+$/, "");
+    http.defaults.baseURL = String(raw).replace(/\/+$/, "");
 }
-
-
-export const http = axios.create({
-    baseURL: getBaseUrl(),
-    withCredentials: true, // cookie-session auth
-    headers: {
-        "Content-Type": "application/json",
-    },
-    timeout: 15000,
-});
 
 /**
  * Normalize our backend response contract:
@@ -49,7 +56,6 @@ export const http = axios.create({
 function unwrapResponse(res) {
     const payload = res?.data;
 
-    // Expected contract from our server:
     if (payload && typeof payload === "object" && "ok" in payload) {
         if (payload.ok) return payload.data;
 
@@ -62,7 +68,6 @@ function unwrapResponse(res) {
         });
     }
 
-    // Fallback: unexpected response shape
     return payload;
 }
 
@@ -70,13 +75,13 @@ function unwrapResponse(res) {
  * Normalize axios errors into ApiError.
  */
 function toApiError(err) {
-    // axios error with response
     const res = err?.response;
+
     if (res) {
+        // If server uses our contract, unwrapResponse will throw ApiError with message/code
         try {
-            // Try to use the same contract unwrapping if present
             unwrapResponse(res);
-            // If unwrapResponse didn't throw but we are here, treat as error anyway
+            // If unwrapResponse didn't throw, fall back:
             return new ApiError(res.statusText || "Request failed", {
                 status: res.status,
                 code: "HTTP_ERROR",
@@ -92,9 +97,12 @@ function toApiError(err) {
         }
     }
 
-    // network / timeout / CORS / server down
     if (err?.code === "ECONNABORTED") {
-        return new ApiError("Request timed out", { status: 0, code: "TIMEOUT", details: err?.message });
+        return new ApiError("Request timed out", {
+            status: 0,
+            code: "TIMEOUT",
+            details: err?.message,
+        });
     }
 
     return new ApiError("Network error (failed to reach server)", {
@@ -107,12 +115,14 @@ function toApiError(err) {
 /**
  * Core request helper. Use this from auth.js / blogs.js / comments.js only.
  *
- * @param {string} method - GET/POST/PUT/DELETE
- * @param {string} url - e.g. "/auth/login"
- * @param {any} [data] - request body
- * @param {import("axios").AxiosRequestConfig} [config] - axios config overrides
+ * @param {string} method
+ * @param {string} url
+ * @param {any} [data]
+ * @param {import("axios").AxiosRequestConfig} [config]
  */
 export async function request(method, url, data, config = {}) {
+    ensureBaseUrl();
+
     try {
         const res = await http.request({
             method,
