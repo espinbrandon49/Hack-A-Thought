@@ -39,7 +39,14 @@ export default function Feed() {
   }
 
   if (error) {
-    return <FormError error={error} fallback="Failed to load posts." />;
+    return (
+      <div className="space-y-3">
+        <FormError error={error} fallback="Failed to load posts." />
+        <Button variant="secondary" size="sm" onClick={load}>
+          Retry
+        </Button>
+      </div>
+    );
   }
 
   if (!blogs.length) {
