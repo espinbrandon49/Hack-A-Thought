@@ -6,6 +6,8 @@ import Card from "../components/ui/Card";
 import Spinner from "../components/ui/Spinner";
 import FormError from "../components/ui/FormError";
 import EmptyState from "../components/ui/EmptyState";
+import Button from "../components/ui/Button";
+
 
 export default function Feed() {
   const [blogs, setBlogs] = useState([]);
