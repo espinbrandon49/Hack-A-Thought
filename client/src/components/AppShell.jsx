@@ -63,12 +63,12 @@ export default function AppShell({ children }) {
               <>
                 <span className="text-sm text-slate-600">
                   Signed in
-                  {user.username ? (
+                  {user.name ? (
                     <>
                       {" "}
                       as{" "}
                       <span className="font-medium text-slate-900">
-                        {user.username}
+                        {user.name}
                       </span>
                     </>
                   ) : null}

@@ -43,7 +43,7 @@ app.use(express.urlencoded({ extended: true }));
 /* -------------------- Routes -------------------- */
 
 // API only
-app.use(routes);
+app.use('/api', routes);
 
 /* -------------------- Error Handling -------------------- */
 
