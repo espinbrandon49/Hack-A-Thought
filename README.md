@@ -1,4 +1,6 @@
 # Hack-A-Thought
+**Live Demo:** https://hack-a-thought-473618422e58.herokuapp.com/
+
 
 A clean, full-stack blogging platform focused on the core authoring loop: **write → read → discuss**.  
 Built as a revamp exercise to demonstrate modern React + Express architecture, consistency, and reliability.
@@ -72,6 +74,36 @@ npm run dev
 ```
 
 The client expects the API base URL via `VITE_API_BASE_URL`.
+
+---
+
+## Deployment
+
+This app is deployed as a Heroku monolith:
+
+- React (Vite) is built during deploy and served from the Express server
+- API is namespaced under `/api`
+- Database: JawsDB (MySQL)
+- Auth: cookie-based sessions
+
+**Live Demo:** https://hack-a-thought-473618422e58.herokuapp.com/
+
+---
+
+## Demo
+
+**Video Walkthrough (≈75 seconds):**  
+https://youtube.com/watch?v=9LdCU8SGrsc&feature=youtu.be
+
+This short demo shows the full core loop of the application:
+
+- Authentication with session persistence (login survives refresh)
+- Viewing the feed and opening a blog post
+- Creating a comment and confirming it persists
+- Managing posts in the dashboard (create, edit, delete)
+- Ownership enforcement (users can only modify their own content)
+
+The goal of the demo is clarity: a viewer should understand what the app does and how it works in under two minutes.
 
 ---
 
