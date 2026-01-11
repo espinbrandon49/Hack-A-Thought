@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
@@ -42,12 +43,25 @@ app.use(express.urlencoded({ extended: true }));
 
 /* -------------------- Routes -------------------- */
 
-// API only
+// API routes (namespaced)
 app.use('/api', routes);
+
+/* -------------------- Serve Client (Production) -------------------- */
+
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '../client/dist');
+
+  app.use(express.static(distPath));
+
+  // SPA fallback for React Router
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 /* -------------------- Error Handling -------------------- */
 
-// 404s
+// 404s (API only)
 app.use(notFound);
 
 // Centralized error handler
@@ -56,7 +70,7 @@ app.use(errorHandler);
 /* -------------------- Server -------------------- */
 
 sequelize.sync({ force: false }).then(() => {
-  app.listen(PORT, () =>
-    console.log(`Server listening on: http://localhost:${PORT}`)
-  );
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
 });
